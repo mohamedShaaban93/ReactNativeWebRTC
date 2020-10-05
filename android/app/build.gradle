@@ -185,6 +185,7 @@ dependencies {
     implementation 'com.facebook.react:react-native:+'  // From node_modules
 
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.0.0'
+    implementation project(':WebRTCModule')
 
     debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}") {
         exclude group:'com.facebook.fbjni'
@@ -206,7 +207,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-    compile project(':WebRTCModule')
 }
 
 // Run this once to be able to run the application with BUCK
