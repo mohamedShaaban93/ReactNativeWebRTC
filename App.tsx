@@ -1,5 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
+import {
+  RTCPeerConnection,
+  RTCIceCandidate,
+  RTCSessionDescription,
+  RTCView,
+  MediaStream,
+  MediaStreamTrack,
+  mediaDevices,
+  registerGlobals
+} from 'react-native-webrtc';
 
 export interface Props {
   name: string;
@@ -10,19 +20,53 @@ const Hello: React.FC<Props> = (props) => {
   const [enthusiasmLevel, setEnthusiasmLevel] = React.useState(
     props.enthusiasmLevel
   );
+  const [streem , setStreem ] = useState("");
+  const configuration = { "iceServers": [{ "url": "stun:stun.l.google.com:19302" }] };
+  const pc = new RTCPeerConnection(configuration);
 
-  const onIncrement = () =>
-    setEnthusiasmLevel((enthusiasmLevel || 0) + 1);
-  const onDecrement = () =>
-    setEnthusiasmLevel((enthusiasmLevel || 0) - 1);
+  let isFront = true;
+  mediaDevices.enumerateDevices().then(sourceInfos => {
+    console.log(sourceInfos);
+    let videoSourceId;
+    for (let i = 0; i < sourceInfos.length; i++) {
+      const sourceInfo = sourceInfos[i];
+      if (sourceInfo.kind == "videoinput" && sourceInfo.facing == (isFront ? "front" : "environment")) {
+        videoSourceId = sourceInfo.deviceId;
+      }
+    }
+    mediaDevices.getUserMedia({
+      audio: true,
+      video: {
+        mandatory: {
+          minWidth: 500, // Provide your own width, height and frame rate here
+          minHeight: 300,
+          minFrameRate: 30
+        },
+        facingMode: (isFront ? "user" : "environment"),
+        optional: (videoSourceId ? [{ sourceId: videoSourceId }] : [])
+      }
+    })
+      .then(stream => {
+        // Got stream!
+      })
+      .catch(error => {
+        // Log error
+      });
+  });
 
-  const getExclamationMarks = (numChars: number) =>
-    Array(numChars + 1).join('!');
+  pc.createOffer().then(desc => {
+    pc.setLocalDescription(desc).then(() => {
+      // Send pc.localDescription to peer
+    });
+  });
+
+  pc.onicecandidate = function (event) {
+    // send event.candidate to peer
+  };
   return (
     <View style={styles.root}>
-      <Text style={styles.greeting}>
-        Hello
-      </Text>
+      <Text>{"Hello"}</Text>
+      <RTCView streamURL={"stun:stun.l.google.com:19302"}/>
     </View>
   );
 };
