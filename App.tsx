@@ -1,11 +1,3 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
-
 import React from 'react';
 import {
     SafeAreaView,
@@ -16,6 +8,7 @@ import {
     StatusBar,
     TouchableOpacity,
     Dimensions,
+    TouchableNativeFeedbackBase
 } from 'react-native';
 
 import {
@@ -24,66 +17,62 @@ import {
     RTCSessionDescription,
     RTCView,
     MediaStream,
-    MediaStreamTrack,
+    RTCIceCandidateType,
     mediaDevices,
-    registerGlobals
+    RTCPeerConnectionConfiguration,
+    MediaStreamConstraints
 } from 'react-native-webrtc';
 
 import io from 'socket.io-client'
+import { IceCandidatePayload } from './src/interfaces/Candidate.interface';
+import { OfferAnswerPayload } from './OfferAnswer.interface';
 
 const dimensions = Dimensions.get('window')
 
-class App extends React.Component {
-    constructor(props) {
-        super(props)
+interface Props {
 
-        this.state = {
-            localStream: null,
-            remoteStream: null,
+}
+interface State {
+    localStream: MediaStream | null;
+    remoteStream: MediaStream | null;
+    mirror: boolean;
+    userName: string;
+    secondUser: string;
+    usersList: string[]
+}
+const pc_config: RTCPeerConnectionConfiguration = {
+    "iceServers": [
+        {
+            urls: ['stun:stun.l.google.com:19302']
         }
+    ]
+}
+class App extends React.Component<Props, State>{
+    state: State = {
+        localStream: null,
+        remoteStream: null,
+        mirror: true,
+        userName: '',
+        secondUser: '',
+        usersList: [],
+    }
 
-        this.sdp
-        this.socket = null
-        this.candidates = []
+    private pc: any;
+    private socket: any;
+    private sdp: string = '';
+    private candidates: RTCIceCandidate[] = []
+
+    constructor(props: Props) {
+        super(props);
     }
 
     componentDidMount = () => {
-
-        this.socket = io.connect('http://55c6ae578296.ngrok.io')
-
-        this.socket.on('connection-success', success => {
-            console.log(success)
-        })
-
-        this.socket.on('offerOrAnswer', (sdp) => {
-
-            this.sdp = JSON.stringify(sdp)
-
-            // set sdp as remote description
-            this.pc.setRemoteDescription(new RTCSessionDescription(sdp))
-        })
-
-        this.socket.on('candidate', (candidate) => {
-            // console.log('From Peer... ', JSON.stringify(candidate))
-            // this.candidates = [...this.candidates, candidate]
-            this.pc.addIceCandidate(new RTCIceCandidate(candidate))
-        })
-
-        const pc_config = {
-            "iceServers": [
-                // {
-                //   urls: 'stun:[STUN_IP]:[PORT]',
-                //   'credentials': '[YOR CREDENTIALS]',
-                //   'username': '[USERNAME]'
-                // },
-                {
-                    urls: 'stun:stun.l.google.com:19302'
-                }
-            ]
-        }
-
+        this.peerConnection();
+        this.socketListener();
+        this.getUserMedia();
+    }
+    peerConnection = () => {
         this.pc = new RTCPeerConnection(pc_config)
-
         this.pc.onicecandidate = (e) => {
             // send the candidates to the remote peer
             // see addCandidate below to be triggered on the remote peer
@@ -105,8 +94,38 @@ class App extends React.Component {
                 remoteStream: e.stream
             })
         }
+    }
+    socketListener = () => {
+        this.socket = io.connect('https://webrtc-server-api.herokuapp.com/')
 
-        const success = (stream) => {
+        this.socket.on('conn-success', (data: string) => {
+            this.setState({
+                userName: data.name,
+            })
+        })
+
+        this.socket.on('users-list', (data: string[]) => {
+            this.setState({
+                usersList: data,
+            })
+        })
+
+        this.socket.on('offer', (payload: OfferAnswerPayload) => {
+            this.sdp = JSON.stringify(payload.description)
+            this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
+        })
+
+        this.socket.on('answer', (payload: OfferAnswerPayload) => {
+            this.sdp = JSON.stringify(payload.description)
+            this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
+        })
+
+        this.socket.on('ice-candidat', (payload: IceCandidatePayload) => {
+            this.pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
+        })
+    }
+    getUserMedia = () => {
+        const success = (stream: MediaStream) => {
             console.log(stream.toURL())
             this.setState({
                 localStream: stream
@@ -117,7 +136,6 @@ class App extends React.Component {
         const failure = (e) => {
             console.log('getUserMedia Error: ', e)
         }
-
         let isFront = true;
         mediaDevices.enumerateDevices().then(sourceInfos => {
             console.log(sourceInfos);
@@ -129,7 +147,7 @@ class App extends React.Component {
                 }
             }
 
-            const constraints = {
+            const constraints: MediaStreamConstraints = {
                 audio: true,
                 video: {
                     mandatory: {
@@ -147,15 +165,12 @@ class App extends React.Component {
                 .catch(failure);
         });
     }
-    sendToPeer = (messageType, payload) => {
-        this.socket.emit(messageType, {
-            socketID: this.socket.id,
-            payload
-        })
+    sendToPeer = (messageType: string, payload: object) => {
+        console.log("messageType", messageType)
+        this.socket.emit(messageType, payload)
     }
 
     createOffer = () => {
-        console.log('Offer')
 
         // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createOffer
         // initiates the creation of SDP
@@ -165,8 +180,7 @@ class App extends React.Component {
 
                 // set offer sdp as local description
                 this.pc.setLocalDescription(sdp)
-
-                this.sendToPeer('offerOrAnswer', sdp)
+                this.sendToPeer('offer', { name: this.state.secondUser, description: sdp })
             })
     }
 
@@ -179,7 +193,7 @@ class App extends React.Component {
                 // set answer sdp as local description
                 this.pc.setLocalDescription(sdp)
 
-                this.sendToPeer('offerOrAnswer', sdp)
+                this.sendToPeer('answer', { name: this.state.secondUser, description: sdp })
             })
     }
 
@@ -203,6 +217,8 @@ class App extends React.Component {
             console.log(JSON.stringify(candidate))
             this.pc.addIceCandidate(new RTCIceCandidate(candidate))
         });
+        console.log("RTC=======>", this.rtc);
+
     }
 
 
@@ -227,72 +243,84 @@ class App extends React.Component {
                     <Text style={{ fontSize: 22, textAlign: 'center', color: 'white' }}>Waiting for Peer connection ...</Text>
                 </View>
             )
+        if (this.state.secondUser === '') {
+            return (
+                <SafeAreaView style={{ flex: 1, }}>
+                    <StatusBar backgroundColor="blue" barStyle={'dark-content'} />
+                    <Text style={{ fontSize: 20, alignSelf: 'center' }}>
+                        My name is {this.state.userName}
+                    </Text>
+                    <ScrollView>
+                        {this.state.usersList?.map(data => {
+                            if (data !== this.state.userName)
+                                return (
+                                    <TouchableOpacity onPress={() => { this.setState({ secondUser: data }) }}>
+                                        <Text style={{ fontSize: 20, alignSelf: 'center' }}>
+                                            {data}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )
+                        })}
+                    </ScrollView>
 
-        return (
+                </SafeAreaView>
+            )
+        }
+        else
+            return (
 
-            <SafeAreaView style={{ flex: 1, }}>
-                <StatusBar backgroundColor="blue" barStyle={'dark-content'} />
-                <View style={{ ...styles.buttonsContainer }}>
-                    <View style={{ flex: 1, }}>
-                        <TouchableOpacity onPress={this.createOffer}>
-                            <View style={styles.button}>
-                                <Text style={{ ...styles.textContent, }}>Call</Text>
-                            </View>
-                        </TouchableOpacity>
+                <SafeAreaView style={{ flex: 1, }}>
+                    <StatusBar backgroundColor="blue" barStyle={'dark-content'} />
+                    <Text style={{ fontSize: 20, alignSelf: 'center' }}>{this.state.userName}</Text>
+                    <View style={{ ...styles.buttonsContainer }}>
+                        <View style={{ flex: 1, }}>
+                            <TouchableOpacity onPress={this.createOffer}>
+                                <View style={styles.button}>
+                                    <Text style={{ ...styles.textContent, }}>Call</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ flex: 1, }}>
+                            <TouchableOpacity onPress={this.createAnswer}>
+                                <View style={styles.button}>
+                                    <Text style={{ ...styles.textContent, }}>Answer</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                    <View style={{ flex: 1, }}>
-                        <TouchableOpacity onPress={this.createAnswer}>
-                            <View style={styles.button}>
-                                <Text style={{ ...styles.textContent, }}>Answer</Text>
+                    <View style={{ ...styles.videosContainer, }}>
+                        <ScrollView style={{ ...styles.scrollView }}>
+                            <View style={{
+                                flex: 1,
+                                width: '100%',
+                                backgroundColor: 'black',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}>
+                                {remoteVideo}
+
                             </View>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                <View style={{ ...styles.videosContainer, }}>
-                    <View style={{
-                        position: 'absolute',
-                        zIndex: 1,
-                        bottom: 10,
-                        right: 10,
-                        width: 100, height: 200,
-                        backgroundColor: 'black', //width: '100%', height: '100%'
-                    }}>
-                        <View style={{ flex: 1 }}>
-                            <TouchableOpacity onPress={() => localStream._tracks[1]._switchCamera()}>
+                            <TouchableOpacity onPress={() => {
+                                this.setState({
+                                    mirror: !this.state.mirror,
+                                })
+                                localStream._tracks[1]._switchCamera()
+                            }}>
                                 <View>
                                     <RTCView
                                         key={1}
                                         zOrder={0}
                                         objectFit='cover'
                                         style={{ ...styles.rtcView }}
+                                        mirror={this.state.mirror}
                                         streamURL={localStream && localStream.toURL()}
                                     />
                                 </View>
                             </TouchableOpacity>
-                        </View>
+                        </ScrollView>
                     </View>
-                    <ScrollView style={{ ...styles.scrollView }}>
-                        <View style={{
-                            flex: 1,
-                            width: '100%',
-                            backgroundColor: 'black',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                        }}>
-                            {remoteVideo}
-
-                        </View>
-                        <RTCView
-                            key={1}
-                            zOrder={0}
-                            objectFit='cover'
-                            style={{ ...styles.rtcView }}
-                            streamURL={localStream && localStream.toURL()}
-                        />
-                    </ScrollView>
-                </View>
-            </SafeAreaView>
-        );
+                </SafeAreaView>
+            );
     }
 };
 
