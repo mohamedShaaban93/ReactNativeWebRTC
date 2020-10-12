@@ -180,7 +180,7 @@ class App extends React.Component<Props, State>{
 
                 // set offer sdp as local description
                 this.pc.setLocalDescription(sdp)
-                this.sendToPeer('offer', { name: this.state.secondUser, description: sdp })
+                this.sendToPeer('offer', { name: this.state.secondUser, from:this.state.userName, description: sdp })
             })
     }
 
@@ -193,7 +193,7 @@ class App extends React.Component<Props, State>{
                 // set answer sdp as local description
                 this.pc.setLocalDescription(sdp)
 
-                this.sendToPeer('answer', { name: this.state.secondUser, description: sdp })
+                this.sendToPeer('answer', { name: this.state.secondUser, from:this.state.userName, description: sdp })
             })
     }
 
