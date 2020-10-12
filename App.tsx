@@ -71,16 +71,20 @@ class App extends React.Component<Props, State>{
         this.socketListener();
         this.getUserMedia();
     }
+    componentWillUnmount() {
+        this.socket.disconnect();
+    }
     peerConnection = () => {
         this.pc = new RTCPeerConnection(pc_config)
         this.pc.onicecandidate = (e) => {
             // send the candidates to the remote peer
             // see addCandidate below to be triggered on the remote peer
             if (e.candidate) {
-                // console.log(JSON.stringify(e.candidate))
-                this.sendToPeer('candidate', e.candidate)
+                console.log('ccccccccccccccccccccccccccccc',{ name: this.state.secondUser, from: this.state.userName, candidate: e.candidate })
+                this.sendToPeer('ice-candidate', { name: this.state.secondUser, from: this.state.userName, candidate: e.candidate })
             }
         }
+
 
         // triggered when there is a change in connection state
         this.pc.oniceconnectionstatechange = (e) => {
@@ -120,7 +124,7 @@ class App extends React.Component<Props, State>{
             this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
         })
 
-        this.socket.on('ice-candidat', (payload: IceCandidatePayload) => {
+        this.socket.on('ice-candidate', (payload: IceCandidatePayload) => {
             this.pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
         })
     }
@@ -180,7 +184,7 @@ class App extends React.Component<Props, State>{
 
                 // set offer sdp as local description
                 this.pc.setLocalDescription(sdp)
-                this.sendToPeer('offer', { name: this.state.secondUser, from:this.state.userName, description: sdp })
+                this.sendToPeer('offer', { name: this.state.secondUser, from: this.state.userName, description: sdp })
             })
     }
 
@@ -193,7 +197,7 @@ class App extends React.Component<Props, State>{
                 // set answer sdp as local description
                 this.pc.setLocalDescription(sdp)
 
-                this.sendToPeer('answer', { name: this.state.secondUser, from:this.state.userName, description: sdp })
+                this.sendToPeer('answer', { name: this.state.secondUser, from: this.state.userName, description: sdp })
             })
     }
 
