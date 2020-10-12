@@ -4,6 +4,7 @@ import {gestureHandlerRootHOC} from 'react-native-gesture-handler';
 
 //Screens
 import Users from './users/Users';
+import Call from './call/Call';
 
 
 
@@ -13,6 +14,7 @@ interface Screens {
 }
 const screens = [
   {name: 'users', Screen: Users},
+  {name: 'call', Screen: Call},
 
 ];
 /// create Screen
