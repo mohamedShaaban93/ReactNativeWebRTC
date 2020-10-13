@@ -48,14 +48,16 @@ export default class Users extends Component<Props, State> {
       })
     })
     this.socket.on('offer', (payload: OfferAnswerPayload) => {
-      this.setState({ comingCall: true })
-      console.log('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz',payload);
-      
+      this.setState({ comingCall: true, secondUser:payload.name })
+      console.log('oferrrrrrrrrrrrrrrrrrrrrrrrrrrr', payload);
+
       // this.sdp = JSON.stringify(payload.description)
       this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
     })
 
     this.socket.on('answer', (payload: OfferAnswerPayload) => {
+      console.log('answreeeeeeeeeeeeeeeeeeeeeeeeeer', payload);
+
       // this.sdp = JSON.stringify(payload.description)
       this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
     })
@@ -74,52 +76,56 @@ export default class Users extends Component<Props, State> {
         </SafeAreaView>
       )
     } else if (this.state.comingCall) {
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Button title='answer' onPress={() => {
-          Navigation.push(this.props.componentId, {
-            component: {
-              name: 'call',
-              passProps: {
-                userName:this.state.userName,
-                secondUser: this.state.secondUser,
-                offer: false
+      return (
+        <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Button title='answer' onPress={() => {
+            Navigation.push(this.props.componentId, {
+              component: {
+                name: 'call',
+                passProps: {
+                  userName: this.state.userName,
+                  secondUser: this.state.secondUser,
+                  offer: false
+                }
               }
-          }
-        })
-        }} />
-        <Button title='decline' onPress={() => this.setState({comingCall:false})}/>
+            })
+          }} />
+          <Button title='decline' onPress={() => this.setState({ comingCall: false })} />
         </SafeAreaView>
-    }
-    return (
-      <SafeAreaView style={{ flex: 1, }}>
-        <StatusBar backgroundColor="blue" barStyle={'dark-content'} />
-        <Text style={{ fontSize: 20, alignSelf: 'center' }}>
-          My name is {this.state.userName}
-        </Text>
-        <ScrollView>
-          {this.state.usersList?.map(data => {
-            if (data !== this.state.userName) {
-              return (
-                <TouchableOpacity onPress={() => {
-                  Navigation.push(this.props.componentId, {
-                    component: {
-                      name: 'call',
-                      passProps: {
-                        userName:this.state.userName,
-                        secondUser: this.state.secondUser,
-                        offer: true
-                      }
-                  }
-                })}}>
-                  <UserCard data={data}/>
-                </TouchableOpacity>
-              )
-            }
-            else { return null; }
-          })}
-        </ScrollView>
+      )
 
-      </SafeAreaView>
-    )
+    } else
+      return (
+        <SafeAreaView style={{ flex: 1, }}>
+          <StatusBar backgroundColor="blue" barStyle={'dark-content'} />
+          <Text style={{ fontSize: 20, alignSelf: 'center' }}>
+            My name is {this.state.userName}
+          </Text>
+          <ScrollView>
+            {this.state.usersList?.map(data => {
+              if (data !== this.state.userName) {
+                return (
+                  <TouchableOpacity onPress={() => {
+                    Navigation.push(this.props.componentId, {
+                      component: {
+                        name: 'call',
+                        passProps: {
+                          userName: this.state.userName,
+                          secondUser: data,
+                          offer: true
+                        }
+                      }
+                    })
+                  }}>
+                    <UserCard data={data} />
+                  </TouchableOpacity>
+                )
+              }
+              else { return null; }
+            })}
+          </ScrollView>
+
+        </SafeAreaView>
+      )
   }
 }

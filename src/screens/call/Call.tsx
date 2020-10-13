@@ -1,8 +1,9 @@
 import React, { Component } from 'react'
 import { SafeAreaView, StatusBar, Text, View } from 'react-native'
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
-import { mediaDevices, MediaStream, MediaStreamConstraints, RTCPeerConnection, RTCPeerConnectionConfiguration, RTCView } from 'react-native-webrtc';
+import { mediaDevices, MediaStream, MediaStreamConstraints, RTCPeerConnection, RTCSessionDescription, RTCView } from 'react-native-webrtc';
 import { Socket } from 'socket.io-client';
+import { OfferAnswerPayload } from '../../interfaces/OfferAnswer.interface';
 import { getClient, getPeerConnection } from '../../realtime';
 import { styles } from './styles'
 
@@ -37,9 +38,9 @@ export default class Call extends Component<Props, State> {
 
   peerConnection = () => {
     this.props.offer ? this.createOffer() : this.createAnswer();
+    
     this.pc.onicecandidate = (e) => {
-      // send the candidates to the remote peer
-      // see addCandidate below to be triggered on the remote peer
+
       if (e.candidate) {
         console.log('ccccccccccccccccccccccccccccc', { name: this.props.secondUser, from: this.props.userName, candidate: e.candidate })
         this.sendToPeer('ice-candidate', { name: this.props.secondUser, from: this.props.userName, candidate: e.candidate })
@@ -53,6 +54,9 @@ export default class Call extends Component<Props, State> {
     }
 
     this.pc.onaddstream = (e) => {
+      console.log('====================================');
+      console.log('onaddstream');
+      console.log('====================================');
       debugger
       // this.remoteVideoref.current.srcObject = e.streams[0]
       this.setState({
@@ -72,6 +76,9 @@ export default class Call extends Component<Props, State> {
       .then(sdp => {
         this.pc.setLocalDescription(sdp)
         this.sendToPeer('answer', { name: this.props.secondUser, from: this.props.userName, description: sdp })
+        console.log('====================================');
+        console.log('answer', { name: this.props.secondUser, from: this.props.userName, description: sdp });
+        console.log('====================================');
       })
   }
   sendToPeer = (messageType: string, payload: object) => {
@@ -145,7 +152,7 @@ export default class Call extends Component<Props, State> {
           this.setState({
             mirror: !this.state.mirror,
           })
-          // localStream._tracks[1]._switchCamera()
+          localStream._tracks[1]._switchCamera()
         }}>
           <RTCView
             key={2}
