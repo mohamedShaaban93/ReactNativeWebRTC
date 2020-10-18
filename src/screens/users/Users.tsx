@@ -11,7 +11,10 @@ import { connect } from 'react-redux';
 
 interface Props {
   componentId: string;
-  comingCall: boolean;
+  comingCall: {
+    hasOffer: boolean,
+    name: string
+  };
 }
 interface State {
   userName: string;
@@ -22,11 +25,11 @@ interface State {
 }
 class Users extends Component<Props, State> {
   private socket: SocketIOClient.Socket;
-  private pc: RTCPeerConnection;
+  // private pc: RTCPeerConnection;
   constructor(props: Props) {
     super(props);
     this.socket = getClient();
-    this.pc = getPeerConnection();
+    // this.pc = getPeerConnection();
     this.state = {
       userName: '',
       secondUser: '',
@@ -35,12 +38,11 @@ class Users extends Component<Props, State> {
       comingCall: false,
     }
   }
-  componentDidUpdate(prevProps: any) {
-    if (this.props.comingCall && prevProps.comingCall != this.props.comingCall) {
-      console.log('ssssssssssssssssssssssssssssssssss');
-
+  componentDidUpdate(prevProps: Props) {
+    const { hasOffer } = this.props.comingCall
+    if (hasOffer && prevProps.comingCall.hasOffer != hasOffer) {
       this.setState({
-        comingCall: this.props.comingCall,
+        comingCall: hasOffer,
       })
     }
   }
@@ -51,31 +53,12 @@ class Users extends Component<Props, State> {
         userName: data.name,
       })
     })
-    console.log('cccccccccccccccccccccccc', this.props.comingCall);
-
     this.socket.on('users-list', (data: string[]) => {
       this.setState({
         usersList: data,
         loading: false
       })
     })
-    //   this.socket.on('offer', (payload: OfferAnswerPayload) => {
-    //     this.setState({ comingCall: true, secondUser:payload.name })
-    //     console.log('oferrrrrrrrrrrrrrrrrrrrrrrrrrrr', payload);
-
-    //     // this.sdp = JSON.stringify(payload.description)
-    //     this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    //   })
-
-    //   this.socket.on('answer', (payload: OfferAnswerPayload) => {
-    //     console.log('answreeeeeeeeeeeeeeeeeeeeeeeeeer', payload);
-
-    //     // this.sdp = JSON.stringify(payload.description)
-    //     this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    //   })
-    //   this.socket.on('ice-candidate', (payload: IceCandidatePayload) => {
-    //     this.pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
-    //   })
   }
   componentWillUnmount() {
     this.socket.disconnect();
@@ -96,7 +79,7 @@ class Users extends Component<Props, State> {
                 name: 'call',
                 passProps: {
                   userName: this.state.userName,
-                  secondUser: this.state.secondUser,
+                  secondUser: this.props.comingCall.name,
                   offer: false
                 }
               }
@@ -114,10 +97,10 @@ class Users extends Component<Props, State> {
             My name is {this.state.userName}
           </Text>
           <ScrollView>
-            {this.state.usersList?.map(data => {
+            {this.state.usersList?.map((data,index) => {
               if (data !== this.state.userName) {
                 return (
-                  <TouchableOpacity onPress={() => {
+                  <TouchableOpacity key={index} onPress={() => {
                     Navigation.push(this.props.componentId, {
                       component: {
                         name: 'call',
@@ -136,26 +119,12 @@ class Users extends Component<Props, State> {
               else { return null; }
             })}
           </ScrollView>
-          <Button title='answer' onPress={() => {
-            Navigation.push(this.props.componentId, {
-              component: {
-                name: 'call',
-                passProps: {
-                  userName: this.state.userName,
-                  secondUser: this.state.secondUser,
-                  offer: false
-                }
-              }
-            })
-          }} />
-          <Button title='decline' onPress={() => this.setState({ comingCall: false })} />
-
         </SafeAreaView>
       )
   }
 }
 
 const mapStateToProps = (state: any) => ({
-  comingCall: state.call.call
+  comingCall: state.call.comingCall
 })
 export default connect(mapStateToProps)(Users);

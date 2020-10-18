@@ -1,7 +1,7 @@
-import { Alert } from 'react-native';
-import { RTCPeerConnection, RTCPeerConnectionConfiguration, RTCSessionDescription } from 'react-native-webrtc';
+import { RTCIceCandidate, RTCPeerConnection, RTCPeerConnectionConfiguration, RTCSessionDescription } from 'react-native-webrtc';
 import io from 'socket.io-client';
 import { CALL } from '../actions/types';
+import { IceCandidatePayload } from '../interfaces/Candidate.interface';
 import { OfferAnswerPayload } from '../interfaces/OfferAnswer.interface';
 import store from '../store/Store';
 import { SOCKET_URL } from '../utils/urls';
@@ -26,20 +26,19 @@ export function getClient() {
   if (!socket) {
     socket = io.connect(SOCKET_URL);
   }
+  pc = getPeerConnection();
   socket.on('offer', (payload: OfferAnswerPayload) => {
-    console.log('oferrrrrrrrrrrrrrrrrrrrrrrrrrrr', payload);
+    console.log('oferrrrrrrrrrrrrrrrrrrrrrrrrrrr');
     pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    store.dispatch({type:CALL,call:true})
-    Alert.alert('offer', 'offer')
-    
-
-    // this.sdp = JSON.stringify(payload.description)
-  })
+    store.dispatch({ type: CALL, payload: {hasOffer:true,name:payload.name} });
+    })
 
   socket.on('answer', (payload: OfferAnswerPayload) => {
-    console.log('answreeeeeeeeeeeeeeeeeeeeeeeeeer', payload);
+    console.log('answreeeeeeeeeeeeeeeeeeeeeeeeeer',payload.description);
     pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    // this.sdp = JSON.stringify(payload.description)
+  })
+  socket.on('ice-candidate', (payload: IceCandidatePayload) => {
+    pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
   })
   return socket;
 }

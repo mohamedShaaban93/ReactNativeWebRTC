@@ -7,6 +7,8 @@ import { Provider } from 'react-redux';
 //Screens
 import Users from './users/Users';
 import Call from './call/Call';
+import Old from '../../App_Old';
+
 
 
 
@@ -17,6 +19,7 @@ interface Screens {
 const screens = [
   { name: 'users', Screen: Users },
   { name: 'call', Screen: Call },
+  { name: 'old', Screen: Old },
 
 ];
 /// create Screen

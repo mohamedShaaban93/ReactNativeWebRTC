@@ -1,18 +1,21 @@
 import {CALL} from '../actions/types';
 
 const initialState = {
-  call: true,
+  comingCall: {
+    hasOffer: false,
+    name: '',
+  },
 };
 
 const reducer = (
   state = initialState,
-  action: {type: string; call: boolean},
+  action: {type: string; payload: {hasOffer:boolean,name:string}},
 ) => {
-  console.log('Action======>>>>>>', action.call);
+  console.log('Action======>>>>>>', action);
 
   switch (action.type) {
-    case CALL:
-      return {...state, lang: action.call};
+    case CALL:      
+      return {...state, comingCall:action.payload};
     default:
       return state;
   }

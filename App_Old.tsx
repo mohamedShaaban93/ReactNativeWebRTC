@@ -120,6 +120,9 @@ class App extends React.Component<Props, State>{
     })
 
     this.socket.on('answer', (payload: OfferAnswerPayload) => {
+      console.log('====================================');
+      console.log('on-Answerrrrrrrrrrrrrrr');
+      console.log('====================================');
       this.sdp = JSON.stringify(payload.description)
       this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
     })
@@ -178,7 +181,7 @@ class App extends React.Component<Props, State>{
 
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createOffer
     // initiates the creation of SDP
-    this.pc.createOffer({ offerToReceiveVideo: 1 })
+    this.pc.createOffer()
       .then(sdp => {
         // console.log(JSON.stringify(sdp))
 
@@ -190,7 +193,7 @@ class App extends React.Component<Props, State>{
 
   createAnswer = () => {
     console.log('Answer')
-    this.pc.createAnswer({ offerToReceiveVideo: 1 })
+    this.pc.createAnswer()
       .then(sdp => {
         // console.log(JSON.stringify(sdp))
 
@@ -201,29 +204,29 @@ class App extends React.Component<Props, State>{
       })
   }
 
-  setRemoteDescription = () => {
-    // retrieve and parse the SDP copied from the remote peer
-    const desc = JSON.parse(this.sdp)
+  // setRemoteDescription = () => {
+  //   // retrieve and parse the SDP copied from the remote peer
+  //   const desc = JSON.parse(this.sdp)
 
-    // set sdp as remote description
-    this.pc.setRemoteDescription(new RTCSessionDescription(desc))
-  }
+  //   // set sdp as remote description
+  //   this.pc.setRemoteDescription(new RTCSessionDescription(desc))
+  // }
 
-  addCandidate = () => {
-    // retrieve and parse the Candidate copied from the remote peer
-    // const candidate = JSON.parse(this.textref.value)
-    // console.log('Adding candidate:', candidate)
+  // addCandidate = () => {
+  //   // retrieve and parse the Candidate copied from the remote peer
+  //   // const candidate = JSON.parse(this.textref.value)
+  //   // console.log('Adding candidate:', candidate)
 
-    // add the candidate to the peer connection
-    // this.pc.addIceCandidate(new RTCIceCandidate(candidate))
+  //   // add the candidate to the peer connection
+  //   // this.pc.addIceCandidate(new RTCIceCandidate(candidate))
 
-    this.candidates.forEach(candidate => {
-      console.log(JSON.stringify(candidate))
-      this.pc.addIceCandidate(new RTCIceCandidate(candidate))
-    });
-    console.log("RTC=======>", this.rtc);
+  //   this.candidates.forEach(candidate => {
+  //     console.log(JSON.stringify(candidate))
+  //     this.pc.addIceCandidate(new RTCIceCandidate(candidate))
+  //   });
+  //   console.log("RTC=======>", this.rtc);
 
-  }
+  // }
 
 
   render() {

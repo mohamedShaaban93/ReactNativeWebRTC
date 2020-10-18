@@ -5,5 +5,5 @@ export const setCall = (call: boolean) => async (
   store: Function,
 ) => {
 
-  dispatch({type: CALL, call});
+  dispatch({type: CALL, payload:call});
 };
