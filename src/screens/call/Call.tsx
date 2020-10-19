@@ -1,17 +1,14 @@
 import React, { Component } from 'react';
-import { Button, SafeAreaView, StatusBar, Text, View } from 'react-native';
+import { SafeAreaView, StatusBar, Text, View } from 'react-native';
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
 import {
   mediaDevices,
   MediaStream,
   MediaStreamConstraints,
   RTCPeerConnection,
-  RTCPeerConnectionConfiguration,
-  RTCSessionDescription,
   RTCView,
 } from 'react-native-webrtc';
-import { Socket } from 'socket.io-client';
-import { OfferAnswerPayload } from '../../interfaces/OfferAnswer.interface';
+import { connect } from 'react-redux';
 import { getClient, getPeerConnection } from '../../realtime';
 import { styles } from './styles';
 
@@ -20,18 +17,17 @@ interface Props {
   userName: string;
   secondUser: string;
   offer: boolean;
+  remoteStream: MediaStream | null;
 }
 interface State {
-  remoteStream: MediaStream | null;
   localStream: MediaStream | null;
   mirror: boolean;
 }
 
-export default class Call extends Component<Props, State> {
+class Call extends Component<Props, State> {
   private socket: SocketIOClient.Socket;
   private pc: RTCPeerConnection;
   state: State = {
-    remoteStream: null,
     localStream: null,
     mirror: true,
   };
@@ -43,63 +39,48 @@ export default class Call extends Component<Props, State> {
 
   }
   componentDidMount() {
+   
     setTimeout(() => {
       this.props.offer ? this.createOffer() : this.createAnswer();
-    }, 1000);
-    
+    }, 500);
+
     this.getUserMedia();
   }
 
   peerConnection = () => {
-    // 
-    
     this.pc.onicecandidate = (e) => {
 
       if (e.candidate) {
-        // console.log('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', { name: this.props.secondUser, from: this.props.userName, candidate: e.candidate })
         this.sendToPeer('ice-candidate', { name: this.props.secondUser, from: this.props.userName, candidate: e.candidate })
       }
     }
 
 
-    // triggered when there is a change in connection state
     this.pc.oniceconnectionstatechange = (e) => {
       console.log(e)
     }
-
-    this.pc.onaddstream = (e) => {
-      debugger
-      // this.remoteVideoref.current.srcObject = e.streams[0]
-      this.setState({
-        remoteStream: e.stream
-      })
-    }
   }
   createOffer = () => {
-    // initiates the creation of SDP
     this.pc.createOffer()
       .then(sdp => {
         this.pc.setLocalDescription(sdp);
-
-      this.sendToPeer('offer', {
-        name: this.props.secondUser,
-        from: this.props.userName,
-        description: sdp,
+        this.sendToPeer('offer', {
+          name: this.props.secondUser,
+          from: this.props.userName,
+          description: sdp,
+        });
       });
-    });
   };
   createAnswer = () => {
-    // initiates the creation of SDP
     this.pc.createAnswer()
       .then(sdp => {
         this.pc.setLocalDescription(sdp);
-
-      this.sendToPeer('answer', {
-        name: this.props.secondUser,
-        from: this.props.userName,
-        description: sdp,
+        this.sendToPeer('answer', {
+          name: this.props.secondUser,
+          from: this.props.userName,
+          description: sdp,
+        });
       });
-    });
   };
   sendToPeer = (messageType: string, payload: object) => {
     this.socket.emit(messageType, payload);
@@ -148,23 +129,8 @@ export default class Call extends Component<Props, State> {
   };
 
   render() {
-    const { localStream, remoteStream } = this.state;
+    const { localStream } = this.state;
     const localVideo = localStream ? (
-      <RTCView
-        key={2}
-        mirror={true}
-        style={{ ...styles.rtcViewRemote }}
-        objectFit="contain"
-        streamURL={localStream && localStream.toURL()}
-      />
-    ) : (
-        <View style={{ padding: 15 }}>
-          <Text style={{ fontSize: 22, textAlign: 'center', color: 'white' }}>
-            Waiting for Peer connection ...
-        </Text>
-        </View>
-      );
-    const remoteVideo = remoteStream ? (
       <TouchableOpacity
         onPress={() => {
           this.setState({
@@ -177,9 +143,26 @@ export default class Call extends Component<Props, State> {
           mirror={true}
           style={{ ...styles.rtcViewRemote }}
           objectFit="contain"
-          streamURL={remoteStream && remoteStream.toURL()}
+          streamURL={localStream.toURL()}
         />
       </TouchableOpacity>
+
+    ) : (
+        <View style={{ padding: 15 }}>
+          <Text style={{ fontSize: 22, textAlign: 'center', color: 'white' }}>
+            Waiting for Peer connection ...
+        </Text>
+        </View>
+      );
+    const remoteVideo = this.props.remoteStream ? (
+
+      <RTCView
+        key={2}
+        mirror={true}
+        style={{ ...styles.rtcViewRemote }}
+        objectFit="contain"
+        streamURL={this.props.remoteStream.toURL()}
+      />
     ) : (
         <View style={{ padding: 15 }}>
           <Text style={{ fontSize: 22, textAlign: 'center', color: 'white' }}>
@@ -207,10 +190,12 @@ export default class Call extends Component<Props, State> {
             </View>
             {localVideo}
           </ScrollView>
-          {/* <Button title='call' onPress={()=>{this.createOffer()}}/>
-          <Button title='answer' onPress={()=>{this.createAnswer()}}/> */}
         </View>
       </SafeAreaView>
     );
   }
 }
+const mapStateToProps = (state: any) => ({
+  remoteStream: state.remoteStream.remoteStream
+})
+export default connect(mapStateToProps)(Call);

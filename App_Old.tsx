@@ -19,12 +19,17 @@ import {
   mediaDevices,
   MediaStreamConstraints
 } from 'react-native-webrtc';
+import { connect } from 'react-redux';
 import { getClient, getPeerConnection } from './src/realtime';
 
 const dimensions = Dimensions.get('window')
 
 interface Props {
-
+  componentId: string;
+  comingCall: {
+    hasOffer: boolean,
+    name: string
+  };
 }
 interface State {
   localStream: MediaStream | null;
@@ -32,7 +37,8 @@ interface State {
   mirror: boolean;
   userName: string;
   secondUser: string;
-  usersList: string[]
+  usersList: string[];
+  comingCall: boolean;
 }
 class App extends React.Component<Props, State>{
   state: State = {
@@ -42,6 +48,7 @@ class App extends React.Component<Props, State>{
     userName: '',
     secondUser: '',
     usersList: [],
+    comingCall: false,
   }
 
   private pc: RTCPeerConnection;
@@ -53,6 +60,15 @@ class App extends React.Component<Props, State>{
     super(props);
     this.pc = getPeerConnection();
     this.socket = getClient();
+  }
+  componentDidUpdate(prevProps: Props) {
+    const { hasOffer } = this.props.comingCall
+    if (hasOffer && prevProps.comingCall.hasOffer != hasOffer) {
+      this.setState({
+        comingCall: hasOffer,
+        secondUser: this.props.comingCall.name
+      })
+    }
   }
 
   componentDidMount = () => {
@@ -66,7 +82,6 @@ class App extends React.Component<Props, State>{
   peerConnection = () => {
     this.pc.onicecandidate = (e) => {
       if (e.candidate) {
-        console.log('ccccccccccccccccccccccccccccc', { name: this.state.secondUser, from: this.state.userName, candidate: e.candidate })
         this.sendToPeer('ice-candidate', { name: this.state.secondUser, from: this.state.userName, candidate: e.candidate })
       }
     }
@@ -75,6 +90,9 @@ class App extends React.Component<Props, State>{
     }
 
     this.pc.onaddstream = (e) => {
+      console.log('===========remoteStream=========================');
+      console.log(e.stream);
+      console.log('====================================');
       this.setState({
         remoteStream: e.stream
       })
@@ -95,7 +113,6 @@ class App extends React.Component<Props, State>{
   }
   getUserMedia = () => {
     const success = (stream: MediaStream) => {
-      console.log(stream.toURL())
       this.setState({
         localStream: stream
       })
@@ -107,7 +124,6 @@ class App extends React.Component<Props, State>{
     }
     let isFront = true;
     mediaDevices.enumerateDevices().then(sourceInfos => {
-      console.log(sourceInfos);
       let videoSourceId;
       for (let i = 0; i < sourceInfos.length; i++) {
         const sourceInfo = sourceInfos[i];
@@ -148,11 +164,9 @@ class App extends React.Component<Props, State>{
   }
 
   createAnswer = () => {
-    console.log('Answer')
     this.pc.createAnswer()
       .then(sdp => {
         this.pc.setLocalDescription(sdp)
-
         this.sendToPeer('answer', { name: this.state.secondUser, from: this.state.userName, description: sdp })
       })
   }
@@ -177,7 +191,7 @@ class App extends React.Component<Props, State>{
           <Text style={{ fontSize: 22, textAlign: 'center', color: 'white' }}>Waiting for Peer connection ...</Text>
         </View>
       )
-    if (this.state.secondUser === '') {
+    if (this.state.secondUser === '' && this.props.comingCall.name === '') {
       return (
         <SafeAreaView style={{ flex: 1, }}>
           <StatusBar backgroundColor="blue" barStyle={'dark-content'} />
@@ -298,4 +312,7 @@ const styles = StyleSheet.create({
   }
 });
 
-export default App;
+const mapStateToProps = (state: any) => ({
+  comingCall: state.call.comingCall
+})
+export default connect(mapStateToProps)(App);

@@ -1,6 +1,6 @@
 import { RTCIceCandidate, RTCPeerConnection, RTCPeerConnectionConfiguration, RTCSessionDescription } from 'react-native-webrtc';
 import io from 'socket.io-client';
-import { CALL } from '../actions/types';
+import { CALL, REMOTE_STREAM } from '../actions/types';
 import { IceCandidatePayload } from '../interfaces/Candidate.interface';
 import { OfferAnswerPayload } from '../interfaces/OfferAnswer.interface';
 import store from '../store/Store';
@@ -17,6 +17,12 @@ let pc: RTCPeerConnection
 export function getPeerConnection() {
   if (!pc) {
     pc = new RTCPeerConnection(pc_config)
+    pc.onaddstream = (e) => {
+      console.log('===========remoteStream=========================');
+      console.log(e.stream);
+      console.log('====================================');
+      store.dispatch({ type: REMOTE_STREAM, payload: e.stream });
+    }
   }
   return pc;
 }
@@ -28,9 +34,9 @@ export function getClient() {
   }
   pc = getPeerConnection();
   socket.on('offer', (payload: OfferAnswerPayload) => {
-    console.log('oferrrrrrrrrrrrrrrrrrrrrrrrrrrr');
+    console.log('oferrrrrrrrrrrrrrrrrrrrrrrrrrrr',payload);
     pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    store.dispatch({ type: CALL, payload: {hasOffer:true,name:payload.name} });
+    store.dispatch({ type: CALL, payload: {hasOffer:true,name:payload.from} });
     })
 
   socket.on('answer', (payload: OfferAnswerPayload) => {

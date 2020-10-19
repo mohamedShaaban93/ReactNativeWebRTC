@@ -2,11 +2,8 @@ import React, { Component } from 'react'
 import { ActivityIndicator, Button, SafeAreaView, StatusBar, Text, View } from 'react-native'
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
 import { Navigation } from 'react-native-navigation';
-import { RTCIceCandidate, RTCPeerConnection, RTCSessionDescription } from 'react-native-webrtc';
 import UserCard from '../../components/userCard/UserCard';
-import { IceCandidatePayload } from '../../interfaces/Candidate.interface';
-import { OfferAnswerPayload } from '../../interfaces/OfferAnswer.interface';
-import { getClient, getPeerConnection } from '../../realtime';
+import { getClient } from '../../realtime';
 import { connect } from 'react-redux';
 
 interface Props {
@@ -21,29 +18,17 @@ interface State {
   secondUser: string;
   usersList: string[];
   loading: boolean;
-  comingCall: boolean;
 }
 class Users extends Component<Props, State> {
   private socket: SocketIOClient.Socket;
-  // private pc: RTCPeerConnection;
   constructor(props: Props) {
     super(props);
     this.socket = getClient();
-    // this.pc = getPeerConnection();
     this.state = {
       userName: '',
       secondUser: '',
       usersList: [],
       loading: true,
-      comingCall: false,
-    }
-  }
-  componentDidUpdate(prevProps: Props) {
-    const { hasOffer } = this.props.comingCall
-    if (hasOffer && prevProps.comingCall.hasOffer != hasOffer) {
-      this.setState({
-        comingCall: hasOffer,
-      })
     }
   }
 
@@ -70,7 +55,7 @@ class Users extends Component<Props, State> {
           <ActivityIndicator color='orange' />
         </SafeAreaView>
       )
-    } else if (this.state.comingCall) {
+    } else if (this.props.comingCall.hasOffer) {
       return (
         <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Button title='answer' onPress={() => {
@@ -85,7 +70,7 @@ class Users extends Component<Props, State> {
               }
             })
           }} />
-          <Button title='decline' onPress={() => this.setState({ comingCall: false })} />
+          <Button title='decline' onPress={() => {}} />
         </SafeAreaView>
       )
 
