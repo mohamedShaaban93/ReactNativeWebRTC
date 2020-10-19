@@ -14,18 +14,12 @@ import {
 import {
   RTCPeerConnection,
   RTCIceCandidate,
-  RTCSessionDescription,
   RTCView,
   MediaStream,
-  RTCIceCandidateType,
   mediaDevices,
-  RTCPeerConnectionConfiguration,
   MediaStreamConstraints
 } from 'react-native-webrtc';
-
-import io from 'socket.io-client'
-import { IceCandidatePayload } from './interfaces/Candidate.interface';
-import { OfferAnswerPayload } from './OfferAnswer.interface';
+import { getClient, getPeerConnection } from './src/realtime';
 
 const dimensions = Dimensions.get('window')
 
@@ -40,13 +34,6 @@ interface State {
   secondUser: string;
   usersList: string[]
 }
-const pc_config: RTCPeerConnectionConfiguration = {
-  "iceServers": [
-    {
-      urls: ['stun:stun.l.google.com:19302']
-    }
-  ]
-}
 class App extends React.Component<Props, State>{
   state: State = {
     localStream: null,
@@ -57,13 +44,15 @@ class App extends React.Component<Props, State>{
     usersList: [],
   }
 
-  private pc: any;
-  private socket: any;
+  private pc: RTCPeerConnection;
+  private socket: SocketIOClient.Socket;
   private sdp: string = '';
   private candidates: RTCIceCandidate[] = []
 
   constructor(props: Props) {
     super(props);
+    this.pc = getPeerConnection();
+    this.socket = getClient();
   }
 
   componentDidMount = () => {
@@ -75,33 +64,23 @@ class App extends React.Component<Props, State>{
     this.socket.disconnect();
   }
   peerConnection = () => {
-    this.pc = new RTCPeerConnection(pc_config)
     this.pc.onicecandidate = (e) => {
-      // send the candidates to the remote peer
-      // see addCandidate below to be triggered on the remote peer
       if (e.candidate) {
         console.log('ccccccccccccccccccccccccccccc', { name: this.state.secondUser, from: this.state.userName, candidate: e.candidate })
         this.sendToPeer('ice-candidate', { name: this.state.secondUser, from: this.state.userName, candidate: e.candidate })
       }
     }
-
-
-    // triggered when there is a change in connection state
     this.pc.oniceconnectionstatechange = (e) => {
       console.log(e)
     }
 
     this.pc.onaddstream = (e) => {
-      debugger
-      // this.remoteVideoref.current.srcObject = e.streams[0]
       this.setState({
         remoteStream: e.stream
       })
     }
   }
   socketListener = () => {
-    this.socket = io.connect('https://webrtc-server-api.herokuapp.com/')
-
     this.socket.on('conn-success', (data: string) => {
       this.setState({
         userName: data.name,
@@ -112,23 +91,6 @@ class App extends React.Component<Props, State>{
       this.setState({
         usersList: data,
       })
-    })
-
-    this.socket.on('offer', (payload: OfferAnswerPayload) => {
-      this.sdp = JSON.stringify(payload.description)
-      this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    })
-
-    this.socket.on('answer', (payload: OfferAnswerPayload) => {
-      console.log('====================================');
-      console.log('on-Answerrrrrrrrrrrrrrr');
-      console.log('====================================');
-      this.sdp = JSON.stringify(payload.description)
-      this.pc.setRemoteDescription(new RTCSessionDescription(payload.description))
-    })
-
-    this.socket.on('ice-candidate', (payload: IceCandidatePayload) => {
-      this.pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
     })
   }
   getUserMedia = () => {
@@ -178,14 +140,8 @@ class App extends React.Component<Props, State>{
   }
 
   createOffer = () => {
-
-    // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createOffer
-    // initiates the creation of SDP
     this.pc.createOffer()
       .then(sdp => {
-        // console.log(JSON.stringify(sdp))
-
-        // set offer sdp as local description
         this.pc.setLocalDescription(sdp)
         this.sendToPeer('offer', { name: this.state.secondUser, from: this.state.userName, description: sdp })
       })
@@ -195,40 +151,11 @@ class App extends React.Component<Props, State>{
     console.log('Answer')
     this.pc.createAnswer()
       .then(sdp => {
-        // console.log(JSON.stringify(sdp))
-
-        // set answer sdp as local description
         this.pc.setLocalDescription(sdp)
 
         this.sendToPeer('answer', { name: this.state.secondUser, from: this.state.userName, description: sdp })
       })
   }
-
-  // setRemoteDescription = () => {
-  //   // retrieve and parse the SDP copied from the remote peer
-  //   const desc = JSON.parse(this.sdp)
-
-  //   // set sdp as remote description
-  //   this.pc.setRemoteDescription(new RTCSessionDescription(desc))
-  // }
-
-  // addCandidate = () => {
-  //   // retrieve and parse the Candidate copied from the remote peer
-  //   // const candidate = JSON.parse(this.textref.value)
-  //   // console.log('Adding candidate:', candidate)
-
-  //   // add the candidate to the peer connection
-  //   // this.pc.addIceCandidate(new RTCIceCandidate(candidate))
-
-  //   this.candidates.forEach(candidate => {
-  //     console.log(JSON.stringify(candidate))
-  //     this.pc.addIceCandidate(new RTCIceCandidate(candidate))
-  //   });
-  //   console.log("RTC=======>", this.rtc);
-
-  // }
-
-
   render() {
     const {
       localStream,

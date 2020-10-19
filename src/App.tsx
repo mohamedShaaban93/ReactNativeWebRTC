@@ -13,7 +13,7 @@ export const startApp = async () => {
                     children: [
                         {
                             component: {
-                                name: 'users'
+                                name: 'old'
                             }
                         }
                     ]
